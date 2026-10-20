@@ -1,0 +1,103 @@
+
+services:
+  kafka:
+    image: apache/kafka:3.9.1
+    container_name: geointel-kafka
+    hostname: kafka
+    ports:
+      - "127.0.0.1:9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:29092,EXTERNAL://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    restart: unless-stopped
+
+ 
+  kafka-init:
+    image: apache/kafka:3.9.1
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        echo "Waiting for Kafka..."
+
+        until /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list; do
+          sleep 3
+        done
+
+        echo "Kafka is ready. Creating topics..."
+
+        for topic in news.raw news.processed intel.alerts; do
+          echo "Creating topic: $$topic"
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --create --if-not-exists --topic "$$topic" --partitions 3 --replication-factor 1
+        done
+
+        echo "Kafka initialization complete."
+    restart: "no"
+
+  backend:
+    build: ./backend
+    container_name: geointel-backend
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      OLLAMA_URL: http://host.docker.internal:11434/api/generate
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    volumes:
+      - backend_data:/app/data
+    restart: unless-stopped
+
+  kafka-consumer:
+    build: ./backend
+    container_name: geointel-consumer
+    command: ["python", "kafka_consumer.py"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    volumes:
+      - backend_data:/app/data
+    restart: unless-stopped
+
+  rss-collector:
+    build: ./backend
+    container_name: geointel-rss
+    command: ["python", "-m", "collectors.rss_collector"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    volumes:
+      - backend_data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ""
+    container_name: geointel-frontend
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  kafka_data:
+  backend_data:

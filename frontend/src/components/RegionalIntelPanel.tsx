@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { GeoLocation } from "../utils/locations";
 import { findArticleLocations } from "../utils/locations";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL || "";
 
 interface Article {
   id: string;

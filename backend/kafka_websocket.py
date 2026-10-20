@@ -2,14 +2,17 @@
 import asyncio
 import json
 import logging
+import os
 
 from aiokafka import AIOKafkaConsumer
 from fastapi import WebSocket
 
 
 logger = logging.getLogger(__name__)
-
-KAFKA_SERVER = "localhost:9092"
+KAFKA_SERVER = os.getenv(
+    "KAFKA_BOOTSTRAP_SERVERS",
+    "localhost:9092",
+)
 PROCESSED_TOPIC = "news.processed"
 
 

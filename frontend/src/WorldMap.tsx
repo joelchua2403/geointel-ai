@@ -1,8 +1,8 @@
 import { useEffect, useMemo } from "react";
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { findArticleLocations } from "../utils/locations";
-import type { GeoLocation } from "../utils/locations";
+import { findArticleLocations } from "./utils/locations";
+import type { GeoLocation } from "./utils/locations";
 
 type MapArticle = { id: string; title: string; url: string };
 type Props = { articles: MapArticle[]; selectedLocation: GeoLocation | null; showStrategicMarkers?: boolean };

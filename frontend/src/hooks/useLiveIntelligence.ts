@@ -29,9 +29,13 @@ export function useLiveIntelligence() {
     let stopped = false;
 
     function connect() {
-      socket = new WebSocket(
-        "ws://localhost:8000/ws/intelligence"
-      );
+     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+
+const wsUrl =
+  import.meta.env.VITE_WS_URL ||
+  `${protocol}//${window.location.host}/ws/intelligence`;
+
+socket = new WebSocket(wsUrl);
 
       socket.onopen = () => {
         setConnected(true);

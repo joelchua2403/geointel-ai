@@ -22,7 +22,7 @@ import type { StrategicSite } from "./utils/strategicSites";
 import LiveIntelligenceFeed from "./components/LiveIntelligenceFeed";
 import "./App.css";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL || "";
 
 // ==========================================
 // TYPES

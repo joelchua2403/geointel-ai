@@ -5,6 +5,7 @@ import logging
 import re
 import sqlite3
 from pathlib import Path
+import os
 
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 
@@ -14,7 +15,12 @@ from monitoring_topics import MONITORING_TOPICS
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-KAFKA_SERVER = "localhost:9092"
+import os
+
+KAFKA_SERVER = os.getenv(
+    "KAFKA_BOOTSTRAP_SERVERS",
+    "localhost:9092",
+)
 RAW_TOPIC = "news.raw"
 PROCESSED_TOPIC = "news.processed"
 

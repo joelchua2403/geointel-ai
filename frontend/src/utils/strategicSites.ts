@@ -11,7 +11,7 @@ export type StrategicSite = {
   enabled: boolean;
 };
 
-const API_URL = "http://localhost:8000/api/strategic-sites";
+const API_URL = "/api/strategic-sites";
 
 const STORAGE_KEY = "geointel-strategic-sites-v1";
 

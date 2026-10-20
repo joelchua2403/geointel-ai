@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+httpx
+aiokafka
+feedparser
+pydantic
+sqlalchemy>=2.0,<3.0
