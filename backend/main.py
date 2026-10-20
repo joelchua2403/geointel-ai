@@ -16,7 +16,10 @@ from contextlib import asynccontextmanager, suppress
 
 from fastapi import WebSocket, WebSocketDisconnect
 from kafka_websocket import manager, consume_processed_news
-
+from intelligence_history import (
+    init_history,
+    get_articles as get_intelligence_history,
+)
 
 # ==========================================
 # LOGGING
@@ -37,6 +40,10 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize SQLite intelligence history database
+    init_history()
+
+    # Start Kafka consumer for real-time intelligence
     kafka_task = asyncio.create_task(
         consume_processed_news()
     )
@@ -44,11 +51,11 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        # Stop Kafka consumer gracefully
         kafka_task.cancel()
 
         with suppress(asyncio.CancelledError):
             await kafka_task
-
 
 app = FastAPI(
     title="GeoIntel AI API",
@@ -358,3 +365,8 @@ async def intelligence_websocket(websocket: WebSocket):
     except Exception:
         manager.disconnect(websocket)
         logger.exception("WebSocket connection closed")
+
+@app.get("/api/intelligence")
+def list_intelligence(limit: int = 100):
+    limit = max(1, min(limit, 200))
+    return get_intelligence_history(limit)

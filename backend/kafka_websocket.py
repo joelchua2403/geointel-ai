@@ -6,13 +6,16 @@ import os
 
 from aiokafka import AIOKafkaConsumer
 from fastapi import WebSocket
+from intelligence_history import save_article
 
 
 logger = logging.getLogger(__name__)
+
 KAFKA_SERVER = os.getenv(
     "KAFKA_BOOTSTRAP_SERVERS",
     "localhost:9092",
 )
+
 PROCESSED_TOPIC = "news.processed"
 
 
@@ -23,6 +26,7 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.add(websocket)
+
         logger.info(
             "WebSocket connected. Clients: %d",
             len(self.active_connections),
@@ -38,6 +42,9 @@ class ConnectionManager:
             try:
                 await websocket.send_json(message)
             except Exception:
+                logger.exception(
+                    "Failed to send WebSocket message"
+                )
                 disconnected.append(websocket)
 
         for websocket in disconnected:
@@ -57,6 +64,7 @@ async def consume_processed_news():
             value_deserializer=lambda value: json.loads(
                 value.decode("utf-8")
             ),
+            enable_auto_commit=False,
         )
 
         try:
@@ -64,10 +72,36 @@ async def consume_processed_news():
             logger.info("Kafka WebSocket bridge started")
 
             async for message in consumer:
-                await manager.broadcast({
-                    "type": "news_article",
-                    "data": message.value,
-                })
+                article = message.value
+
+                try:
+                    # Save processed article to SQLite
+                    await asyncio.to_thread(
+                        save_article,
+                        article,
+                    )
+
+                    logger.info(
+                        "Saved intelligence article: %s",
+                        article.get("title", "Unknown"),
+                    )
+
+                    # Broadcast article to connected clients
+                    await manager.broadcast({
+                        "type": "news_article",
+                        "data": article,
+                    })
+
+                    # Commit only after successful processing
+                    await consumer.commit()
+
+                except Exception:
+                    logger.exception(
+                        "Failed to process intelligence article"
+                    )
+                    # Do not commit a failed message.
+                    # Restart the consumer to retry it.
+                    raise
 
         except asyncio.CancelledError:
             raise

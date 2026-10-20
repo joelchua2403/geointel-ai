@@ -19,6 +19,25 @@ interface WebSocketMessage {
   data: LiveArticle;
 }
 
+const MAX_ARTICLES = 100;
+
+function mergeArticles(
+  current: LiveArticle[],
+  incoming: LiveArticle[]
+): LiveArticle[] {
+  const seen = new Set<string>();
+  const merged: LiveArticle[] = [];
+
+  for (const article of [...current, ...incoming]) {
+    if (!article.id || seen.has(article.id)) continue;
+
+    seen.add(article.id);
+    merged.push(article);
+  }
+
+  return merged.slice(0, MAX_ARTICLES);
+}
+
 export function useLiveIntelligence() {
   const [articles, setArticles] = useState<LiveArticle[]>([]);
   const [connected, setConnected] = useState(false);
@@ -28,17 +47,53 @@ export function useLiveIntelligence() {
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
 
+    // 1. Load saved intelligence history
+    async function loadHistory() {
+      try {
+        const response = await fetch(
+          "/api/intelligence?limit=100"
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `History API returned ${response.status}`
+          );
+        }
+
+        const history: LiveArticle[] = await response.json();
+
+        if (!stopped && Array.isArray(history)) {
+          setArticles((previous) =>
+            mergeArticles(previous, history)
+          );
+        }
+      } catch (error) {
+        if (!stopped) {
+          console.error(
+            "Failed to load intelligence history",
+            error
+          );
+        }
+      }
+    }
+
+    // 2. Connect to live Kafka WebSocket bridge
     function connect() {
-     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      if (stopped) return;
 
-const wsUrl =
-  import.meta.env.VITE_WS_URL ||
-  `${protocol}//${window.location.host}/ws/intelligence`;
+      const protocol =
+        window.location.protocol === "https:" ? "wss:" : "ws:";
 
-socket = new WebSocket(wsUrl);
+      const wsUrl =
+        import.meta.env.VITE_WS_URL ||
+        `${protocol}//${window.location.host}/ws/intelligence`;
+
+      socket = new WebSocket(wsUrl);
 
       socket.onopen = () => {
-        setConnected(true);
+        if (!stopped) {
+          setConnected(true);
+        }
       };
 
       socket.onmessage = (event) => {
@@ -49,16 +104,9 @@ socket = new WebSocket(wsUrl);
 
           if (message.type !== "news_article") return;
 
-          setArticles((previous) => {
-            const withoutDuplicate = previous.filter(
-              (article) => article.id !== message.data.id
-            );
-
-            return [
-              message.data,
-              ...withoutDuplicate,
-            ].slice(0, 100);
-          });
+          setArticles((previous) =>
+            mergeArticles([message.data], previous)
+          );
         } catch (error) {
           console.error(
             "Invalid intelligence message",
@@ -68,11 +116,11 @@ socket = new WebSocket(wsUrl);
       };
 
       socket.onclose = () => {
+        if (stopped) return;
+
         setConnected(false);
 
-        if (!stopped) {
-          retryTimer = setTimeout(connect, 3000);
-        }
+        retryTimer = setTimeout(connect, 3000);
       };
 
       socket.onerror = () => {
@@ -80,6 +128,8 @@ socket = new WebSocket(wsUrl);
       };
     }
 
+    // 3. Start both operations
+    loadHistory();
     connect();
 
     return () => {
