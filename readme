@@ -1,0 +1,64 @@
+# 🌍 GeoIntel AI
+
+**AI-Powered Geopolitical Intelligence & Geospatial Monitoring Platform**
+
+GeoIntel AI is a full-stack intelligence dashboard that combines real-time news retrieval, interactive geospatial visualization, and locally hosted large language models (LLMs) to help users monitor global developments and generate structured intelligence briefings.
+
+Inspired by modern intelligence and geospatial monitoring platforms, GeoIntel AI brings together news aggregation, location-based analysis, and AI-assisted summarization in a unified command-center interface.
+
+> **Project Status:** Active Development — MVP
+
+## ✨ Features
+
+### 🗺️ Interactive Global Intelligence Map
+
+- Interactive world map powered by Leaflet and OpenStreetMap.
+- Geolocates news headlines based on recognized geographic references.
+- Groups and clusters news markers for easier visualization.
+- Clickable markers to explore regional developments.
+- Map navigation and location-focused news filtering.
+- Dark-themed intelligence dashboard.
+
+### 📰 Global News Monitoring
+
+- Integrates with The Guardian Open Platform API.
+- Retrieves news across multiple categories, including world affairs, business, technology, and environment.
+- Search functionality for specific topics and developments.
+- Location-based filtering of news articles.
+- Links to original reporting for source verification.
+
+### 🤖 AI Intelligence Briefings
+
+GeoIntel AI uses a locally hosted language model through Ollama to generate structured intelligence reports.
+
+Briefings include:
+
+- Executive summary
+- Key developments
+- Source references
+- Potential implications
+- Analysis limitations
+
+The application currently uses **Qwen 2.5 (1.5B)** for local inference.
+
+### 📍 Regional Intelligence Analysis
+
+Selecting a geographic location opens a regional intelligence panel that displays relevant headlines and supports location-specific analysis.
+
+This allows users to focus on developments associated with a particular country or region.
+
+### ◆ Strategic Sites Manager
+
+Users can create and manage custom strategic reference locations, such as:
+
+- Military installations
+- Maritime facilities
+- Energy infrastructure
+- Critical infrastructure
+- Diplomatic facilities
+
+The manager supports adding, editing, deleting, searching, and enabling or disabling sites.
+
+Users can enter geographic coordinates manually or select a location directly from the interactive map.
+
+**Current storage
