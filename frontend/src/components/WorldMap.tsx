@@ -53,6 +53,7 @@ interface WorldMapProps {
   strategicSites?: StrategicSite[];
   pickingLocation?: boolean;
 onPickLocation?: (lat: number, lng: number) => void;
+onSelectStrategicSite?: (site: StrategicSite) => void;
 }
 
 type LocationGroup = {
@@ -203,7 +204,8 @@ export default function WorldMap({
   showStrategicMarkers = false,
   strategicSites = [],
   pickingLocation = false,
-onPickLocation,
+  onPickLocation,
+  onSelectStrategicSite,
 }: WorldMapProps) {
 
   // ========================================
@@ -470,6 +472,24 @@ onPickLocation,
                     {site.lat.toFixed(4)},{" "}
                     {site.lng.toFixed(4)}
                   </p>
+                  <button
+  type="button"
+  onClick={() => onSelectStrategicSite?.(site)}
+  style={{
+    width: "100%",
+    marginTop: 10,
+    padding: "9px 12px",
+    background: "#7c3aed",
+    border: "none",
+    borderRadius: 6,
+    color: "#ffffff",
+    fontWeight: 700,
+    fontSize: 11,
+    cursor: "pointer",
+  }}
+>
+  OPEN INTELLIGENCE PROFILE →
+</button>
                 </div>
               </Popup>
             </CircleMarker>

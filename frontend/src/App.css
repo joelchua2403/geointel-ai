@@ -1336,3 +1336,276 @@ button:disabled {
   font-weight: 700;
   box-shadow: 0 10px 30px #0008;
 }
+
+
+.site-intel-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  width: min(360px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+  background: #111827;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  color: #e5e7eb;
+  padding: 20px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+}
+
+.site-intel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.site-intel-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #a78bfa;
+}
+
+.site-intel-header h2 {
+  font-size: 20px;
+  margin: 8px 0 4px;
+}
+
+.site-intel-header p {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.site-intel-header button {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.site-intel-section {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #334155;
+}
+
+.site-intel-section h3 {
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.site-intel-section p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #94a3b8;
+}
+
+.site-intel-coordinates {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.site-intel-analyze {
+  margin-top: 16px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #7c3aed;
+  border-radius: 8px;
+  background: #6d28d9;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.site-intel-analyze:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* ==========================================
+   STRATEGIC SITE AI SUMMARY
+   ========================================== */
+
+.site-ai-summary {
+  background: linear-gradient(
+    145deg,
+    rgba(76, 29, 149, 0.22),
+    rgba(15, 23, 42, 0.95)
+  );
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.site-ai-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: #c4b5fd;
+}
+
+.site-ai-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a78bfa;
+  box-shadow: 0 0 10px #8b5cf6;
+}
+
+.site-ai-model {
+  margin-left: auto;
+  font-size: 9px;
+  padding: 3px 6px;
+  border: 1px solid #6d28d9;
+  border-radius: 4px;
+  color: #a78bfa;
+}
+
+.site-ai-summary-text {
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+}
+
+.site-ai-summary-footer {
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  padding-top: 10px;
+  margin-top: 14px;
+  font-size: 10px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.site-ai-section {
+  margin-top: 22px;
+}
+
+.site-ai-section h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #c4b5fd;
+  margin-bottom: 12px;
+}
+
+.site-ai-development {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.site-ai-number {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #a78bfa;
+  font-family: monospace;
+}
+
+.site-ai-development p,
+.site-ai-implication {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #cbd5e1;
+}
+
+.site-ai-limitations {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #94a3b8;
+  border-left: 2px solid #64748b;
+  padding-left: 10px;
+}
+
+
+.live-intelligence {
+  padding: 16px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.live-intelligence-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.live-intelligence-header h3 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.live-online {
+  color: #4ade80;
+  font-size: 11px;
+}
+
+.live-offline {
+  color: #f87171;
+  font-size: 11px;
+}
+
+.live-intelligence-list {
+  margin-top: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.live-intelligence-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #334155;
+}
+
+.live-intelligence-item a {
+  display: block;
+  margin: 6px 0;
+  color: #93c5fd;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.live-intelligence-item a:hover {
+  text-decoration: underline;
+}
+
+.live-intelligence-topics {
+  font-size: 10px;
+  color: #38bdf8;
+  text-transform: uppercase;
+}
+
+.live-intelligence-item small {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+/* Kafka feed at the top of the existing right-hand news sidebar */
+.kafka-feed-section {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 12px;
+  border-bottom: 1px solid #334155;
+}
+
+.kafka-feed-section .live-intelligence-list {
+  max-height: 220px;
+  overflow-y: auto;
+}

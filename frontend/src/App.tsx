@@ -17,7 +17,9 @@ import {
 import type { GeoLocation } from "./utils/locations";
 
 import { useStrategicSites } from "./utils/strategicSites";
-
+import StrategicSiteIntelPanel from "./components/StrategicSiteIntelPanel.tsx";
+import type { StrategicSite } from "./utils/strategicSites";
+import LiveIntelligenceFeed from "./components/LiveIntelligenceFeed";
 import "./App.css";
 
 const API = "http://localhost:8000";
@@ -108,9 +110,16 @@ export default function App() {
 
   const [showNewsMarkers, setShowNewsMarkers] = useState(true);
   const [showStrategicMarkers, setShowStrategicMarkers] = useState(false);
+  const [selectedStrategicSite, setSelectedStrategicSite] =
+  useState<StrategicSite | null>(null);
 
   // Strategic sites
-  const { sites, setSites } = useStrategicSites();
+ const {
+  sites,
+  setSites,
+  loadingSites,
+  sitesError,
+} = useStrategicSites();
   const [showSitesManager, setShowSitesManager] = useState(false);
 
   // NEW: Map coordinate picker
@@ -444,7 +453,15 @@ export default function App() {
               strategicSites={sites}
               pickingLocation={pickingLocation}
               onPickLocation={handlePickLocation}
+              onSelectStrategicSite={setSelectedStrategicSite}
             />
+
+            {selectedStrategicSite && (
+<StrategicSiteIntelPanel
+  site={selectedStrategicSite}
+  onClose={() => setSelectedStrategicSite(null)}
+/>
+)}
 
             {/* MAP PICKING BANNER */}
             {pickingLocation && (
@@ -518,6 +535,16 @@ export default function App() {
                 <em>{showStrategicMarkers ? "ON" : "OFF"}</em>
               </label>
 
+              {loadingSites && (
+  <p className="layers-note">Loading strategic sites...</p>
+)}
+
+{sitesError && (
+  <p className="layers-note" role="alert">
+    Database error: {sitesError}
+  </p>
+)}
+
               {/* MANAGE STRATEGIC SITES BUTTON */}
               <button
                 type="button"
@@ -555,6 +582,11 @@ export default function App() {
 
           {/* NEWS FEED */}
           <aside className="feed-pane">
+            {/* LIVE KAFKA INTELLIGENCE — above the existing Guardian feed */}
+            <div className="kafka-feed-section">
+              <LiveIntelligenceFeed />
+            </div>
+
             <div className="feed-heading">
               <span>
                 {selectedLocation
