@@ -2,36 +2,41 @@
 
 **AI-Powered Geopolitical Intelligence & Geospatial Monitoring Platform**
 
-GeoIntel AI is a full-stack intelligence dashboard that combines real-time news retrieval, interactive geospatial visualization, and locally hosted large language models (LLMs) to help users monitor global developments and generate structured intelligence briefings.
+GeoIntel AI is a full-stack intelligence dashboard combining news retrieval, interactive geospatial visualization, event-driven RSS ingestion, and locally hosted large language models (LLMs). It helps users monitor global developments and generate structured intelligence briefings.
 
-Inspired by modern intelligence and geospatial monitoring platforms, GeoIntel AI brings together news aggregation, location-based analysis, and AI-assisted summarization in a unified command-center interface.
+Inspired by intelligence and geospatial monitoring platforms, GeoIntel AI brings news aggregation, location-based analysis, and AI-assisted summarization into a unified command-center interface.
 
-> **Project Status:** Active Development — MVP
+> **Project status:** Active Development — MVP
 
 ## ✨ Features
 
 ### 🗺️ Interactive Global Intelligence Map
 
-- Interactive world map powered by Leaflet and OpenStreetMap.
-- Geolocates news headlines based on recognized geographic references.
-- Groups and clusters news markers for easier visualization.
-- Clickable markers to explore regional developments.
-- Map navigation and location-focused news filtering.
+- Interactive map powered by **Leaflet** and **OpenStreetMap**.
+- Geolocated news markers with grouping and clustering.
+- Clickable markers and location-focused news filtering.
 - Dark-themed intelligence dashboard.
 
 ### 📰 Global News Monitoring
 
-- Integrates with The Guardian Open Platform API.
-- Retrieves news across multiple categories, including world affairs, business, technology, and environment.
-- Search functionality for specific topics and developments.
-- Location-based filtering of news articles.
+- Retrieves articles through **The Guardian Open Platform API**.
+- Supports world, business, technology, and environment news categories.
+- Search and location-based filtering.
 - Links to original reporting for source verification.
+
+### 📡 Live Intelligence: RSS, Kafka & WebSockets
+
+- Collects news from **Google News RSS** searches based on monitored geopolitical and security topics.
+- Runs recurring RSS collection cycles, currently configured with a **600-second (10-minute) interval**.
+- Publishes collected articles to the Kafka topic `news.raw`.
+- Processes articles for relevance, topic matching, and deduplication before publishing accepted articles to `news.processed`.
+- A **FastAPI Kafka consumer** saves processed articles to SQLite and broadcasts new events over `/ws/intelligence`.
+- The React Live Intelligence panel can load recent saved articles from `GET /api/intelligence?limit=100` and receive new articles over WebSocket without polling.
+- Only relevant, newly processed articles appear in the live feed; the RSS fetch count is not the number of published articles.
 
 ### 🤖 AI Intelligence Briefings
 
-GeoIntel AI uses a locally hosted language model through Ollama to generate structured intelligence reports.
-
-Briefings include:
+GeoIntel AI uses **Ollama** with **Qwen 2.5 (1.5B)** for local inference. Structured briefings include:
 
 - Executive summary
 - Key developments
@@ -39,26 +44,261 @@ Briefings include:
 - Potential implications
 - Analysis limitations
 
-The application currently uses **Qwen 2.5 (1.5B)** for local inference.
-
 ### 📍 Regional Intelligence Analysis
 
-Selecting a geographic location opens a regional intelligence panel that displays relevant headlines and supports location-specific analysis.
-
-This allows users to focus on developments associated with a particular country or region.
+Selecting a location opens a regional intelligence panel with relevant headlines and location-specific analysis.
 
 ### ◆ Strategic Sites Manager
 
-Users can create and manage custom strategic reference locations, such as:
+Create and manage reference locations such as military installations, maritime facilities, energy infrastructure, critical infrastructure, and diplomatic facilities. Features include adding, editing, deleting, searching, and enabling/disabling sites. Coordinates can be entered manually or selected on the map.
 
-- Military installations
-- Maritime facilities
-- Energy infrastructure
-- Critical infrastructure
-- Diplomatic facilities
+## 🧱 Technology Stack
 
-The manager supports adding, editing, deleting, searching, and enabling or disabling sites.
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React, TypeScript, Vite, Leaflet, OpenStreetMap |
+| Backend | Python, FastAPI |
+| News retrieval | The Guardian Open Platform API, Google News RSS |
+| Event streaming | Apache Kafka, `aiokafka` |
+| Live updates | FastAPI WebSockets |
+| Persistence | SQLite for intelligence history; application storage may use SQLAlchemy |
+| Local AI | Ollama, Qwen 2.5 (1.5B) |
+| Deployment | Docker, Docker Compose, Nginx |
 
-Users can enter geographic coordinates manually or select a location directly from the interactive map.
+## 🔄 Intelligence Data Pipeline
 
-**Current storage
+```mermaid
+flowchart TD
+    A[Google News RSS] --> B[RSS Collector]
+    B --> C[Kafka: news.raw]
+    C --> D[News Processor]
+    D -->|Relevant and not duplicate| E[Kafka: news.processed]
+    D -->|Irrelevant or duplicate| X[Skipped]
+    E --> F[FastAPI Kafka Consumer]
+    F --> G[(SQLite Intelligence History)]
+    F --> H[WebSocket: /ws/intelligence]
+    G --> I[GET /api/intelligence]
+    H --> J[React Live Intelligence]
+    I --> J
+    K[The Guardian API] --> L[FastAPI News API]
+    L --> M[Map and News Views]
+    N[Ollama / Qwen 2.5] --> O[AI Briefings]
+```
+
+The Guardian news API and Kafka-backed Live Intelligence are **separate ingestion paths**. A successful `/api/articles` response does not imply articles have been saved to the intelligence-history database.
+
+## 🚀 Installation & Local Setup
+
+### Prerequisites
+
+- **Git**
+- **Docker Desktop** with Docker Compose v2 (Linux/macOS: Docker Engine and Compose plugin)
+- Internet access for RSS feeds, Guardian API calls, and initial image/model downloads
+- Enough memory and disk space for Kafka and the local Ollama model
+- A Guardian API key for Guardian-backed news retrieval
+
+> The exact `.env` variable names and Docker Compose service configuration may vary by checkout. Verify them against your project's `docker-compose.yml` and any `.env.example` file before starting.
+
+### 1. Clone the repository
+
+```bash
+git clone <YOUR_REPOSITORY_URL>
+cd geointel-ai
+```
+
+Replace `<YOUR_REPOSITORY_URL>` with your repository's Git URL.
+
+### 2. Configure environment variables
+
+If an example file exists, copy it:
+
+```bash
+cp .env.example .env
+```
+
+Otherwise create `.env` according to the environment variables referenced in `docker-compose.yml` and the application source. Configure your Guardian API key and any Ollama settings required by the project. **Do not commit `.env` or API keys.**
+
+For the backend Kafka bridge, the relevant environment variables are:
+
+| Variable | Purpose | Example |
+| --- | --- | --- |
+| `KAFKA_BOOTSTRAP_SERVERS` | Kafka address reachable **from inside the backend container** | `kafka:9092` if this matches the internal listener in Compose |
+| `INTELLIGENCE_DB_PATH` | SQLite file used for persisted intelligence articles | `/app/data/intelligence_history.db` |
+
+Make sure the configured Kafka address matches the internal listener in your Compose configuration. `localhost` inside the backend container refers to that container, not to the Kafka service.
+
+### 3. Build and start services
+
+```bash
+docker compose up -d --build
+```
+
+Check container status:
+
+```bash
+docker compose ps
+```
+
+Typical services include `frontend`, `backend`, `kafka`, `rss-collector`, and `kafka-consumer`; use `docker compose config --services` to see the exact service names in your checkout.
+
+### 4. Open the dashboard
+
+With the current local Nginx port mapping, open:
+
+**http://localhost:8080**
+
+If your Compose file maps a different host port, use that port instead.
+
+### 5. Configure the local AI model
+
+The application uses Ollama and the `qwen2.5:1.5b` model. If Ollama is installed and accessible locally, pull the model with:
+
+```bash
+ollama pull qwen2.5:1.5b
+```
+
+Start or connect Ollama according to your Compose configuration. The hostname used by containers to reach Ollama depends on whether Ollama runs as a Compose service or on the host machine.
+
+### 6. Verify the Live Intelligence API
+
+```bash
+curl -i "http://localhost:8080/api/intelligence?limit=100"
+```
+
+An HTTP `200` response with `[]` means the endpoint is working but the history is empty. Articles will appear after relevant messages are processed and saved.
+
+## 🔌 API & WebSocket Endpoints
+
+| Endpoint | Method | Purpose |
+| --- | --- | --- |
+| `/api/articles` | `GET` | Guardian-backed news retrieval |
+| `/api/intelligence?limit=100` | `GET` | Retrieve recent persisted intelligence articles |
+| `/ws/intelligence` | WebSocket | Push new processed intelligence articles to connected clients |
+
+Example WebSocket event:
+
+```json
+{
+  "type": "news_article",
+  "data": {
+    "id": "example-article-id",
+    "title": "Example intelligence headline",
+    "source": "Example Source",
+    "topic_id": "maritime-security",
+    "matching_topics": ["maritime-security"],
+    "url": "https://example.com/article"
+  }
+}
+```
+
+The actual article payload may include summary, publication and collection timestamps, and relevance score.
+
+## 💾 Persistence & Data Retention
+
+Processed intelligence articles are saved to a SQLite database, normally at `/app/data/intelligence_history.db`, through `backend/intelligence_history.py`.
+
+To retain history after containers are recreated, **mount `/app/data` to a persistent Docker named volume or bind mount** in your Compose file. For example, under the backend service:
+
+```yaml
+services:
+  backend:
+    volumes:
+      - intelligence_data:/app/data
+
+volumes:
+  intelligence_data:
+```
+
+Merge this snippet with your existing Compose configuration; do not replace the entire file. Without a persistent mount, data in the container's writable layer can be lost when the container is removed or recreated.
+
+**Avoid `docker compose down -v`** unless you intend to remove named-volume data.
+
+## 🛠️ Development & Operations
+
+### View logs
+
+```bash
+docker compose logs -f rss-collector
+docker compose logs -f kafka-consumer
+docker compose logs -f backend
+```
+
+### Check saved intelligence article count
+
+```bash
+docker compose exec backend python -c "from intelligence_history import connect; c=connect(); print('Saved articles:', c.execute('SELECT COUNT(*) FROM intelligence_articles').fetchone()[0]); c.close()"
+```
+
+### Rebuild after code changes
+
+```bash
+docker compose up -d --build
+```
+
+### Stop or remove containers
+
+```bash
+docker compose stop       # Stop without removing containers
+docker compose down       # Remove Compose containers and networks
+docker compose up -d      # Start again
+```
+
+### Publish a Kafka test article (optional)
+
+In **Git Bash on Windows**, disable automatic Unix-to-Windows path conversion first:
+
+```bash
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+```
+
+Then send a test event directly to `news.processed`:
+
+```bash
+echo '{"id":"history-test-001","title":"GeoIntel Persistence Test","summary":"Testing saved intelligence","url":"https://example.com/test","source":"Test","topic_id":"test","matching_topics":["test"],"published_at":"2026-10-20T15:00:00Z","collected_at":"2026-10-20T15:00:00Z","relevance_score":1.0}' | docker compose exec -T kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic news.processed
+```
+
+The command assumes the Kafka image provides `/opt/kafka/bin/kafka-console-producer.sh` and the broker listens at `localhost:9092` **inside the Kafka container**. Adjust if your image or listener differs.
+
+Check the backend logs and API afterward:
+
+```bash
+docker compose logs --tail=50 backend
+curl -s "http://localhost:8080/api/intelligence?limit=100"
+```
+
+## 🩺 Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| RSS fetch succeeds, but feed is empty | Check `kafka-consumer` processing logs, then backend persistence logs |
+| Many articles fetched, few published | Expected when RSS deduplication and relevance filters exclude items |
+| `GET /api/intelligence` returns `[]` | SQLite may have no saved messages yet; inspect backend logs |
+| WebSocket connects, but no live articles appear | Confirm `news.processed` messages arrive and `save_article()` runs |
+| Kafka connection errors | Confirm `KAFKA_BOOTSTRAP_SERVERS` uses the correct internal broker listener |
+| Kafka partitions appear split across instances | Check for additional consumers using the same consumer group |
+| Kafka CLI path becomes `C:/Program Files/Git/...` | Disable Git Bash argument path conversion as shown above |
+| Articles disappear after container recreation | Confirm a persistent mount for `/app/data` |
+| Guardian articles display but Live Intelligence is empty | The Guardian and Kafka ingestion paths are independent |
+
+Useful diagnostic commands:
+
+```bash
+docker compose config --services
+docker compose ps
+docker compose logs --tail=100 rss-collector
+docker compose logs --tail=100 kafka-consumer
+docker compose logs --tail=100 backend
+```
+
+## 🛣️ Roadmap
+
+- Historical backfill for existing Kafka messages
+- Topic, source, and relevance filters in Live Intelligence
+- Pipeline health metrics and last-collection timestamps
+- Improved article geolocation and intelligence correlation
+- Production authentication, monitoring, and deployment hardening
+
+## ⚠️ Notes
+
+GeoIntel AI is an **MVP under active development**. News relevance classification, geographic attribution, and AI-generated briefings can be imperfect. Verify important claims against original reporting and authoritative sources.
