@@ -36,13 +36,26 @@ Inspired by intelligence and geospatial monitoring platforms, GeoIntel AI brings
 
 ### 🤖 AI Intelligence Briefings
 
-GeoIntel AI uses **Ollama** with **Qwen 2.5 (1.5B)** for local inference. Structured briefings include:
+GeoIntel AI uses **Ollama** with **Qllama3.2:1b** for local inference. Structured briefings include:
 
 - Executive summary
 - Key developments
 - Source references
 - Potential implications
 - Analysis limitations
+
+### 🔎 AI Research Assistant — Retrieval-Augmented Generation (RAG)
+
+The AI Research Assistant answers questions using retrieved passages from the project's indexed intelligence articles, rather than relying solely on the language model's general knowledge.
+
+- **Automatic indexing:** The `kafka-consumer` processes relevant articles from `news.raw`, publishes accepted articles to `news.processed`, and calls `index_article()` to add article passages to the RAG index.
+- **Chunking:** `backend/rag_store.py` splits article titles, summaries, and available content into overlapping text passages (default 1,200 characters, 160-character overlap).
+- **Embeddings:** Ollama's `nomic-embed-text` converts passages and user questions into vector representations.
+- **Vector storage and retrieval:** ChromaDB stores embeddings, passage text, and article metadata in the `geointel_intelligence_v1` collection and retrieves semantically related passages using cosine distance.
+- **Grounded answers:** The React AI Research Assistant sends questions to `POST /api/rag/query`; the backend uses retrieved intelligence context with a locally hosted Ollama language model to produce an answer. Source metadata includes article titles, URLs, and publication information where available.
+- **Historical indexing:** `backend/rag_backfill.py` can index previously stored articles. Automatic indexing applies to newly processed relevant articles; it does not automatically replay already committed Kafka messages.
+
+RAG improves traceability but does **not** guarantee factual accuracy. Check original sources before relying on AI-generated geopolitical analysis.
 
 ### 📍 Regional Intelligence Analysis
 
@@ -62,7 +75,8 @@ Create and manage reference locations such as military installations, maritime f
 | Event streaming | Apache Kafka, `aiokafka` |
 | Live updates | FastAPI WebSockets |
 | Persistence | SQLite for intelligence history; application storage may use SQLAlchemy |
-| Local AI | Ollama, Qwen 2.5 (1.5B) |
+| Local AI | Ollama; llama3.2:1b for existing briefings; `llama3.2:1b` for the RAG assistant configuration |
+| RAG / vector search | ChromaDB, `nomic-embed-text`, local persistent vector collection |
 | Deployment | Docker, Docker Compose, Nginx |
 
 ## 🔄 Intelligence Data Pipeline
@@ -82,7 +96,15 @@ flowchart TD
     I --> J
     K[The Guardian API] --> L[FastAPI News API]
     L --> M[Map and News Views]
-    N[Ollama / Qwen 2.5] --> O[AI Briefings]
+    N[Ollama / llama3.2:1b] --> O[AI Briefings]
+    D --> P[Automatic RAG Indexing]
+    P --> Q[Ollama nomic-embed-text]
+    Q --> R[(ChromaDB Vector Store)]
+    S[React AI Research Assistant] --> T[POST /api/rag/query]
+    T --> R
+    R --> T
+    T --> U[Ollama LLM]
+    U --> S
 ```
 
 The Guardian news API and Kafka-backed Live Intelligence are **separate ingestion paths**. A successful `/api/articles` response does not imply articles have been saved to the intelligence-history database.
@@ -124,6 +146,10 @@ For the backend Kafka bridge, the relevant environment variables are:
 | --- | --- | --- |
 | `KAFKA_BOOTSTRAP_SERVERS` | Kafka address reachable **from inside the backend container** | `kafka:9092` if this matches the internal listener in Compose |
 | `INTELLIGENCE_DB_PATH` | SQLite file used for persisted intelligence articles | `/app/data/intelligence_history.db` |
+| `OLLAMA_BASE_URL` | Ollama host address reachable from containers | `http://host.docker.internal:11434` |
+| `OLLAMA_EMBED_MODEL` | Embedding model for indexing and search | `nomic-embed-text` |
+| `OLLAMA_MODEL` | Language model for RAG generation (current configuration) | `llama3.2:1b` |
+| `RAG_CHROMA_PATH` | Persistent ChromaDB storage directory | `/app/data/rag_chroma` |
 
 Make sure the configured Kafka address matches the internal listener in your Compose configuration. `localhost` inside the backend container refers to that container, not to the Kafka service.
 
@@ -151,10 +177,10 @@ If your Compose file maps a different host port, use that port instead.
 
 ### 5. Configure the local AI model
 
-The application uses Ollama and the `qwen2.5:1.5b` model. If Ollama is installed and accessible locally, pull the model with:
+The application uses Ollama and the `qllama3.2:1b` model. If Ollama is installed and accessible locally, pull the model with:
 
 ```bash
-ollama pull qwen2.5:1.5b
+ollama pull llama3.2:1b
 ```
 
 Start or connect Ollama according to your Compose configuration. The hostname used by containers to reach Ollama depends on whether Ollama runs as a Compose service or on the host machine.
@@ -167,6 +193,36 @@ curl -i "http://localhost:8080/api/intelligence?limit=100"
 
 An HTTP `200` response with `[]` means the endpoint is working but the history is empty. Articles will appear after relevant messages are processed and saved.
 
+### 7. Set up RAG models and verify indexing
+
+The RAG implementation uses **Ollama running on the host**, reachable from Docker containers at `http://host.docker.internal:11434`. Pull the models before using the AI Research Assistant:
+
+```bash
+ollama pull nomic-embed-text
+ollama pull llama3.2:1b
+ollama list
+```
+
+The `backend` and `kafka-consumer` services must use consistent `OLLAMA_BASE_URL`, `OLLAMA_EMBED_MODEL`, and `RAG_CHROMA_PATH` values, with persistent `/app/data` storage. The current Compose setup uses the `backend_data` named volume. Do not run `docker compose down -v` unless you intentionally want to delete persisted data.
+
+Check the existing vector index:
+
+```bash
+docker compose exec backend python -c "from rag_store import collection; print('Indexed passages:', collection().count())"
+```
+
+Check automatic indexing activity:
+
+```bash
+docker compose logs --tail=100 kafka-consumer
+```
+
+Successful indexing produces log entries such as `RAG indexed: <article title> | Passages: 1`. The count increases when a **new, relevant, nonduplicate** article is processed; a quiet consumer may simply be waiting for incoming news. Passage count is not the same as article count.
+
+For previously stored articles, the project includes `backend/rag_backfill.py`. Inspect its input and options before running it against production data.
+
+> **Concurrency caveat:** This MVP uses embedded ChromaDB with a shared directory mounted into the backend and Kafka consumer. Concurrent access from separate processes is not a robust production design. A dedicated Chroma server or a single database-owning process is recommended before production deployment. RAG indexing failures should also be retried or sent to a separate worker; the current indexing helper logs failures but does not provide durable retries.
+
 ## 🔌 API & WebSocket Endpoints
 
 | Endpoint | Method | Purpose |
@@ -174,6 +230,7 @@ An HTTP `200` response with `[]` means the endpoint is working but the history i
 | `/api/articles` | `GET` | Guardian-backed news retrieval |
 | `/api/intelligence?limit=100` | `GET` | Retrieve recent persisted intelligence articles |
 | `/ws/intelligence` | WebSocket | Push new processed intelligence articles to connected clients |
+| `/api/rag/query` | `POST` | Ask the AI Research Assistant a question using retrieved intelligence context |
 
 Example WebSocket event:
 
@@ -193,6 +250,8 @@ Example WebSocket event:
 
 The actual article payload may include summary, publication and collection timestamps, and relevance score.
 
+The RAG query endpoint is used by the React AI Research Assistant. Its request and response schema should be checked against the current FastAPI implementation before integrating an external client.
+
 ## 💾 Persistence & Data Retention
 
 Processed intelligence articles are saved to a SQLite database, normally at `/app/data/intelligence_history.db`, through `backend/intelligence_history.py`.
@@ -211,7 +270,7 @@ volumes:
 
 Merge this snippet with your existing Compose configuration; do not replace the entire file. Without a persistent mount, data in the container's writable layer can be lost when the container is removed or recreated.
 
-**Avoid `docker compose down -v`** unless you intend to remove named-volume data.
+**Avoid `docker compose down -v`** unless you intend to remove named-volume data. The RAG vector index also resides under `/app/data/rag_chroma` and requires persistent storage.
 
 ## 🛠️ Development & Operations
 
@@ -280,6 +339,10 @@ curl -s "http://localhost:8080/api/intelligence?limit=100"
 | Kafka CLI path becomes `C:/Program Files/Git/...` | Disable Git Bash argument path conversion as shown above |
 | Articles disappear after container recreation | Confirm a persistent mount for `/app/data` |
 | Guardian articles display but Live Intelligence is empty | The Guardian and Kafka ingestion paths are independent |
+| RAG passage count stays unchanged | Confirm new relevant articles are being processed and look for `RAG indexed` or `RAG indexing failed` in consumer logs |
+| Ollama embeddings fail | Check Ollama is running, `nomic-embed-text` is installed, and the container can reach `host.docker.internal:11434` |
+| RAG assistant returns no useful context | Check Chroma collection count, article relevance, and retrieval filters; inspect backend logs |
+| Chroma storage errors or inconsistent reads | Avoid concurrent embedded Chroma access from multiple processes; migrate to a dedicated server |
 
 Useful diagnostic commands:
 
@@ -293,6 +356,7 @@ docker compose logs --tail=100 backend
 
 ## 🛣️ Roadmap
 
+- Harden RAG with a dedicated Chroma service and durable indexing retries
 - Historical backfill for existing Kafka messages
 - Topic, source, and relevance filters in Live Intelligence
 - Pipeline health metrics and last-collection timestamps

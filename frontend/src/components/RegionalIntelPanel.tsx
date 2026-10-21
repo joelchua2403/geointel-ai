@@ -152,7 +152,7 @@ export default function RegionalIntelPanel({
 
         <div className="regional-section-heading">
           <span>AI REGIONAL ASSESSMENT</span>
-          <span>QWEN 2.5</span>
+          <span>llama3.2:1b</span>
         </div>
 
         <button

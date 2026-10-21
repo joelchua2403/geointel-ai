@@ -434,7 +434,7 @@ export default function App() {
           <span>◆ {articles.length} ARTICLES</span>
           <span>◉ {mappedCount} GEO-MATCHED</span>
           <span>◆ {enabledSitesCount} CUSTOM SITES</span>
-          <span>✧ LOCAL AI · QWEN 2.5</span>
+          <span>✧ LOCAL AI · llama3.2:1b</span>
           <span>◆ HEADLINE-BASED ANALYSIS</span>
         </div>
 
@@ -761,7 +761,7 @@ export default function App() {
 
               {generating && (
                 <p className="muted">
-                  Analyzing headlines with Qwen 2.5...
+                  Analyzing headlines with llama3.2:1b...
                 </p>
               )}
 
@@ -858,7 +858,7 @@ export default function App() {
         <footer className="statusbar">
           <span>SYS: NOMINAL</span>
           <span>NEWS: THE GUARDIAN</span>
-          <span>MODEL: QWEN 2.5 LOCAL</span>
+          <span>MODEL: llama3.2:1b LOCAL</span>
           <span className="statusbar-right">
             GEOINTEL AI / DEVELOPMENT BUILD
           </span>
