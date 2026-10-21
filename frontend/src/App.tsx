@@ -21,6 +21,7 @@ import StrategicSiteIntelPanel from "./components/StrategicSiteIntelPanel.tsx";
 import type { StrategicSite } from "./utils/strategicSites";
 import LiveIntelligenceFeed from "./components/LiveIntelligenceFeed";
 import "./App.css";
+import AIResearchPanel from "./components/AIResearchPanel";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -849,6 +850,9 @@ export default function App() {
             </div>
           </section>
         )}
+
+        {/* AI Research Assistant */}
+<AIResearchPanel />
 
         {/* STATUS BAR */}
         <footer className="statusbar">

@@ -23,7 +23,6 @@ services:
       - kafka_data:/var/lib/kafka/data
     restart: unless-stopped
 
- 
   kafka-init:
     image: apache/kafka:3.9.1
     depends_on:
@@ -41,7 +40,13 @@ services:
 
         for topic in news.raw news.processed intel.alerts; do
           echo "Creating topic: $$topic"
-          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --create --if-not-exists --topic "$$topic" --partitions 3 --replication-factor 1
+          /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka:29092 \
+            --create \
+            --if-not-exists \
+            --topic "$$topic" \
+            --partitions 3 \
+            --replication-factor 1
         done
 
         echo "Kafka initialization complete."
@@ -51,8 +56,13 @@ services:
     build: ./backend
     container_name: geointel-backend
     environment:
+      GUARDIAN_API_KEY: ${GUARDIAN_API_KEY}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:1b}
       OLLAMA_URL: http://host.docker.internal:11434/api/generate
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_EMBED_MODEL: nomic-embed-text
+      RAG_CHROMA_PATH: /app/data/rag_chroma
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -66,6 +76,9 @@ services:
     command: ["python", "kafka_consumer.py"]
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_EMBED_MODEL: nomic-embed-text
+      RAG_CHROMA_PATH: /app/data/rag_chroma
     depends_on:
       kafka-init:
         condition: service_completed_successfully

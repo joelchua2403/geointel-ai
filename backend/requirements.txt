@@ -5,3 +5,4 @@ aiokafka
 feedparser
 pydantic
 sqlalchemy>=2.0,<3.0
+chromadb>=0.5,<2

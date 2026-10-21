@@ -20,6 +20,8 @@ from intelligence_history import (
     init_history,
     get_articles as get_intelligence_history,
 )
+from rag_api import router as rag_router
+
 
 # ==========================================
 # LOGGING
@@ -66,6 +68,7 @@ app = FastAPI(
 
 
 app.include_router(strategic_sites_router)
+app.include_router(rag_router)
 
 
 # ==========================================

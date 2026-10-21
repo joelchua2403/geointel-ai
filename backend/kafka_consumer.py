@@ -6,8 +6,8 @@ import re
 import sqlite3
 from pathlib import Path
 import os
-
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
+from rag_store import index_article
 
 from monitoring_topics import MONITORING_TOPICS
 
@@ -118,6 +118,21 @@ def find_matching_topics(article: dict) -> list[str]:
 
     return matches
 
+async def index_for_rag(article: dict) -> None:
+    """Index a processed article without stopping Kafka ingestion."""
+    try:
+        count = await index_article(article)
+        logger.info(
+            "RAG indexed: %s | Passages: %s",
+            article.get("title", ""),
+            count,
+        )
+    except Exception:
+        logger.exception(
+            "RAG indexing failed for article: %s",
+            article.get("id", ""),
+        )
+
 
 async def consume_news():
     initialize_database()
@@ -187,6 +202,9 @@ async def consume_news():
             mark_processed(article_id)
 
             await consumer.commit()
+
+# Index relevant articles for semantic search.
+            await index_for_rag(processed_article)
 
             logger.info(
                 "Processed: %s | Topics: %s",
