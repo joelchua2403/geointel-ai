@@ -177,7 +177,7 @@ If your Compose file maps a different host port, use that port instead.
 
 ### 5. Configure the local AI model
 
-The application uses Ollama and the `qllama3.2:1b` model. If Ollama is installed and accessible locally, pull the model with:
+The application uses Ollama and the `llama3.2:1b` model. If Ollama is installed and accessible locally, pull the model with:
 
 ```bash
 ollama pull llama3.2:1b
