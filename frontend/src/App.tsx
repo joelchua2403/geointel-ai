@@ -22,6 +22,7 @@ import type { StrategicSite } from "./utils/strategicSites";
 import LiveIntelligenceFeed from "./components/LiveIntelligenceFeed";
 import "./App.css";
 import AIResearchPanel from "./components/AIResearchPanel.tsx";
+import GeoIntelChatbot from "./components/GeoIntelChatbot";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -853,6 +854,9 @@ export default function App() {
 
         {/* AI Research Assistant */}
 <AIResearchPanel />
+
+{/* Floating AI Chatbot */}
+<GeoIntelChatbot apiBaseUrl={API} />
 
         {/* STATUS BAR */}
         <footer className="statusbar">

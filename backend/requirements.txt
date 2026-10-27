@@ -6,3 +6,8 @@ feedparser
 pydantic
 sqlalchemy>=2.0,<3.0
 chromadb>=0.5,<2
+langchain>=1.0,<2.0
+langchain-ollama
+langchain-mcp-adapters
+mcp>=1.0,<2.0
+requests

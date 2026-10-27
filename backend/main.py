@@ -21,6 +21,9 @@ from intelligence_history import (
     get_articles as get_intelligence_history,
 )
 from rag_api import router as rag_router
+from agent_api import router as agent_router
+
+
 
 
 # ==========================================
@@ -69,6 +72,7 @@ app = FastAPI(
 
 app.include_router(strategic_sites_router)
 app.include_router(rag_router)
+app.include_router(agent_router)
 
 
 # ==========================================
