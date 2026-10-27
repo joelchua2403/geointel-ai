@@ -115,12 +115,17 @@ async def rag_query(payload: ResearchRequest):
             detail="AI generation failed or returned invalid output",
         ) from exc
 
-    # Step 5: Validate citations against retrieved sources.
-    bracket_ids = re.findall(r"\[(S\d+)\]", parsed.answer)
+       # Step 5: Extract valid citations from the LLM answer.
+    citation_pattern = r"\[(S\d+)\]"
 
-    # Replace references to unknown source IDs.
+    bracket_ids = re.findall(
+        citation_pattern,
+        parsed.answer
+    )
+
+    # Replace references to nonexistent source IDs.
     answer = re.sub(
-        r"\[(S\d+)\]",
+        citation_pattern,
         lambda match: (
             match.group(0)
             if match.group(1) in source_lookup
@@ -129,23 +134,30 @@ async def rag_query(payload: ResearchRequest):
         parsed.answer,
     )
 
-    # Only return sources explicitly cited in the answer.
-    answer_ids = [
-        sid
-        for sid in dict.fromkeys(bracket_ids)
+    # Keep only citations that correspond to retrieved evidence.
+    cited_ids = list(dict.fromkeys(
+        sid for sid in bracket_ids
         if sid in source_lookup
+    ))
+
+    # Step 6: Build source metadata in Python, not through the LLM.
+    sources = [
+        {
+            "reference": sid,
+            "id": match["id"],
+            "title": match["metadata"].get("title", ""),
+            "source": match["metadata"].get("source", ""),
+            "url": match["metadata"].get("url", ""),
+            "published_at": match["metadata"].get("published_at", ""),
+            "distance": match["distance"],
+            "cited": sid in cited_ids,
+        }
+        for sid, match in source_lookup.items()
     ]
 
-    # Step 6: Return the answer and verified source metadata.
     return {
         "answer": answer,
-        "sources": [
-            {
-                "reference": sid,
-                "id": source_lookup[sid]["id"],
-                **source_lookup[sid]["metadata"],
-            }
-            for sid in answer_ids
-        ],
+        "sources": sources,
+        "cited_source_ids": cited_ids,
         "limitations": parsed.limitations,
     }

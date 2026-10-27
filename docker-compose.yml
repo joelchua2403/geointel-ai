@@ -55,6 +55,8 @@ services:
   backend:
     build: ./backend
     container_name: geointel-backend
+    ports:
+      - "127.0.0.1:8000:8000"
     environment:
       GUARDIAN_API_KEY: ${GUARDIAN_API_KEY}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092

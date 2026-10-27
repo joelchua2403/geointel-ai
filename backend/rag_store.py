@@ -83,7 +83,12 @@ async def index_article(article: dict) -> int:
 async def search(question: str, limit: int = 6, max_distance: float = 0.75):
     col = collection()
     count = await asyncio.to_thread(col.count)
+    
+      # Add these debug statements
+    print(f"[RAG DEBUG] Indexed documents: {count}")
+
     if count == 0:
+        print("[RAG DEBUG] ChromaDB collection is empty.")
         return []
     vector = (await embed_texts([question]))[0]
     result = await asyncio.to_thread(
