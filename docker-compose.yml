@@ -1,5 +1,8 @@
 
 services:
+  # ==========================================
+  # Apache Kafka
+  # ==========================================
   kafka:
     image: apache/kafka:3.9.1
     container_name: geointel-kafka
@@ -23,6 +26,9 @@ services:
       - kafka_data:/var/lib/kafka/data
     restart: unless-stopped
 
+  # ==========================================
+  # Kafka Topic Initialization
+  # ==========================================
   kafka-init:
     image: apache/kafka:3.9.1
     depends_on:
@@ -52,67 +58,115 @@ services:
         echo "Kafka initialization complete."
     restart: "no"
 
+  # ==========================================
+  # FastAPI Backend + LangGraph Agents
+  # ==========================================
   backend:
     build: ./backend
     container_name: geointel-backend
     ports:
       - "127.0.0.1:8000:8000"
+
     environment:
+      # Guardian News API
       GUARDIAN_API_KEY: ${GUARDIAN_API_KEY}
+
+      # Kafka
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:1b}
+
+      # Ollama - Local CPU Inference
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
       OLLAMA_URL: http://host.docker.internal:11434/api/generate
       OLLAMA_BASE_URL: http://host.docker.internal:11434
+
+      # LangGraph Agent / Intent Classifier
+      AGENT_MODEL: qwen2.5:1.5b
+
+      # RAG / ChromaDB Embeddings
       OLLAMA_EMBED_MODEL: nomic-embed-text
       RAG_CHROMA_PATH: /app/data/rag_chroma
+
     depends_on:
       kafka-init:
         condition: service_completed_successfully
+
     volumes:
       - backend_data:/app/data
+
     restart: unless-stopped
 
+  # ==========================================
+  # Kafka Consumer + RAG Embedding Pipeline
+  # ==========================================
   kafka-consumer:
     build: ./backend
     container_name: geointel-consumer
+
     command: ["python", "kafka_consumer.py"]
+
     environment:
+      # Kafka
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+
+      # Ollama Embeddings
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_EMBED_MODEL: nomic-embed-text
+
+      # ChromaDB
       RAG_CHROMA_PATH: /app/data/rag_chroma
+
     depends_on:
       kafka-init:
         condition: service_completed_successfully
+
     volumes:
       - backend_data:/app/data
+
     restart: unless-stopped
 
+  # ==========================================
+  # RSS News Collector
+  # ==========================================
   rss-collector:
     build: ./backend
     container_name: geointel-rss
+
     command: ["python", "-m", "collectors.rss_collector"]
+
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+
     depends_on:
       kafka-init:
         condition: service_completed_successfully
+
     volumes:
       - backend_data:/app/data
+
     restart: unless-stopped
 
+  # ==========================================
+  # React + Vite Frontend (Nginx)
+  # ==========================================
   frontend:
     build:
       context: ./frontend
       args:
         VITE_API_URL: ""
+
     container_name: geointel-frontend
+
     ports:
       - "127.0.0.1:8080:80"
+
     depends_on:
       - backend
+
     restart: unless-stopped
 
+# ==========================================
+# Persistent Docker Volumes
+# ==========================================
 volumes:
   kafka_data:
   backend_data:

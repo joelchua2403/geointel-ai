@@ -1,80 +1,90 @@
-
+import logging
 import os
-import requests
+from typing import Any
 
+import requests
 from mcp.server.fastmcp import FastMCP
+import sys
 
 mcp = FastMCP("GeoIntel AI")
+logger = logging.getLogger(__name__)
+API_URL = os.getenv("GEOINTEL_API_URL", "http://127.0.0.1:8000").rstrip("/")
 
-API_URL = os.getenv(
-    "GEOINTEL_API_URL",
-    "http://127.0.0.1:8000"
-)
+
+def _extract_articles(data: Any) -> list[dict]:
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, dict)]
+    if isinstance(data, dict):
+        for key in ("articles", "results", "news"):
+            value = data.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+            if isinstance(value, dict):
+                for nested_key in ("articles", "results", "items"):
+                    nested = value.get(nested_key)
+                    if isinstance(nested, list):
+                        return [item for item in nested if isinstance(item, dict)]
+    return []
+
 
 
 @mcp.tool()
 def get_recent_news(topic: str = "") -> dict:
     """
-    Retrieve recent geopolitical news articles.
+    Search recent geopolitical news by topic.
 
     Args:
-        topic: Optional topic such as China, Taiwan, or Russia.
+        topic: Search topic, e.g. Taiwan Strait, China, Russia.
     """
+    topic = topic.strip()
+
+    params = {
+        "query": topic,
+    }
+
     response = requests.get(
         f"{API_URL}/api/articles",
-        timeout=30
+        params=params,
+        timeout=30,
     )
     response.raise_for_status()
 
     data = response.json()
 
-    articles = (
-        data if isinstance(data, list)
-        else data.get("articles", [])
-    )
+    if isinstance(data, list):
+        articles = data
+    elif isinstance(data, dict):
+        articles = data.get("articles", [])
+    else:
+        articles = []
 
-    if topic.strip():
-        keywords = topic.lower().split()
+    if not isinstance(articles, list):
+        articles = []
 
-        articles = [
-            article
-            for article in articles
-            if any(
-                keyword in (
-                    str(article.get("title") or "")
-                    + " "
-                    + str(article.get("summary") or "")
-                ).lower()
-                for keyword in keywords
-            )
-        ]
+    print(
+    f"[MCP] Topic: {topic!r}, "
+    f"Retrieved: {len(articles)} articles",
+    file=sys.stderr,
+    flush=True,
+)
 
     return {
         "topic": topic,
         "articles": articles[:5],
-        "count": min(len(articles), 5)
+        "count": min(len(articles), 5),
     }
+
 
 
 @mcp.tool()
 def search_intelligence(question: str) -> dict:
-    """
-    Search GeoIntel's indexed geopolitical intelligence
-    using semantic retrieval and RAG.
-
-    Args:
-        question: Natural-language intelligence question.
-    """
+    """Search GeoIntel's indexed intelligence using semantic retrieval."""
     response = requests.post(
         f"{API_URL}/api/rag/query",
-        json={
-            "question": question,
-            "limit": 5
-        },
-        timeout=240
+        json={"question": question, "limit": 5},
+        timeout=240,
     )
     response.raise_for_status()
-
     return response.json()
 
 
